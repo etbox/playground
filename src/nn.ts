@@ -61,7 +61,7 @@ export class Node {
     // Stores total input into the node.
     this.totalInput = this.bias;
     for (let j = 0; j < this.inputLinks.length; j++) {
-      let link = this.inputLinks[j];
+      const link = this.inputLinks[j];
       this.totalInput += link.weight * link.source.output;
     }
     this.output = this.activation.output(this.totalInput);
@@ -105,7 +105,7 @@ export class Errors {
   } else if (x === -Infinity) {
     return -1;
   } else {
-    let e2x = Math.exp(2 * x);
+    const e2x = Math.exp(2 * x);
     return (e2x - 1) / (e2x + 1);
   }
 };
@@ -115,7 +115,7 @@ export class Activations {
   public static TANH: ActivationFunction = {
     output: x => (Math as any).tanh(x),
     der: x => {
-      let output = Activations.TANH.output(x);
+      const output = Activations.TANH.output(x);
       return 1 - output * output;
     }
   };
@@ -126,7 +126,7 @@ export class Activations {
   public static SIGMOID: ActivationFunction = {
     output: x => 1 / (1 + Math.exp(-x)),
     der: x => {
-      let output = Activations.SIGMOID.output(x);
+      const output = Activations.SIGMOID.output(x);
       return output * (1 - output);
     }
   };
@@ -206,16 +206,16 @@ export function buildNetwork(
     outputActivation: ActivationFunction,
     regularization: RegularizationFunction,
     inputIds: string[], initZero?: boolean): Node[][] {
-  let numLayers = networkShape.length;
+  const numLayers = networkShape.length;
   let id = 1;
   /** List of layers, with each layer being a list of nodes. */
-  let network: Node[][] = [];
+  const network: Node[][] = [];
   for (let layerIdx = 0; layerIdx < numLayers; layerIdx++) {
-    let isOutputLayer = layerIdx === numLayers - 1;
-    let isInputLayer = layerIdx === 0;
-    let currentLayer: Node[] = [];
+    const isOutputLayer = layerIdx === numLayers - 1;
+    const isInputLayer = layerIdx === 0;
+    const currentLayer: Node[] = [];
     network.push(currentLayer);
-    let numNodes = networkShape[layerIdx];
+    const numNodes = networkShape[layerIdx];
     for (let i = 0; i < numNodes; i++) {
       let nodeId = id.toString();
       if (isInputLayer) {
@@ -223,14 +223,14 @@ export function buildNetwork(
       } else {
         id++;
       }
-      let node = new Node(nodeId,
+      const node = new Node(nodeId,
           isOutputLayer ? outputActivation : activation, initZero);
       currentLayer.push(node);
       if (layerIdx >= 1) {
         // Add links from nodes in the previous layer to this node.
         for (let j = 0; j < network[layerIdx - 1].length; j++) {
-          let prevNode = network[layerIdx - 1][j];
-          let link = new Link(prevNode, node, regularization, initZero);
+          const prevNode = network[layerIdx - 1][j];
+          const link = new Link(prevNode, node, regularization, initZero);
           prevNode.outputs.push(link);
           node.inputLinks.push(link);
         }
@@ -251,21 +251,21 @@ export function buildNetwork(
  * @return The final output of the network.
  */
 export function forwardProp(network: Node[][], inputs: number[]): number {
-  let inputLayer = network[0];
+  const inputLayer = network[0];
   if (inputs.length !== inputLayer.length) {
     throw new Error("The number of inputs must match the number of nodes in" +
         " the input layer");
   }
   // Update the input layer.
   for (let i = 0; i < inputLayer.length; i++) {
-    let node = inputLayer[i];
+    const node = inputLayer[i];
     node.output = inputs[i];
   }
   for (let layerIdx = 1; layerIdx < network.length; layerIdx++) {
-    let currentLayer = network[layerIdx];
+    const currentLayer = network[layerIdx];
     // Update all the nodes in this layer.
     for (let i = 0; i < currentLayer.length; i++) {
-      let node = currentLayer[i];
+      const node = currentLayer[i];
       node.updateOutput();
     }
   }
@@ -283,17 +283,17 @@ export function backProp(network: Node[][], target: number,
     errorFunc: ErrorFunction): void {
   // The output node is a special case. We use the user-defined error
   // function for the derivative.
-  let outputNode = network[network.length - 1][0];
+  const outputNode = network[network.length - 1][0];
   outputNode.outputDer = errorFunc.der(outputNode.output, target);
 
   // Go through the layers backwards.
   for (let layerIdx = network.length - 1; layerIdx >= 1; layerIdx--) {
-    let currentLayer = network[layerIdx];
+    const currentLayer = network[layerIdx];
     // Compute the error derivative of each node with respect to:
     // 1) its total input
     // 2) each of its input weights.
     for (let i = 0; i < currentLayer.length; i++) {
-      let node = currentLayer[i];
+      const node = currentLayer[i];
       node.inputDer = node.outputDer * node.activation.der(node.totalInput);
       node.accInputDer += node.inputDer;
       node.numAccumulatedDers++;
@@ -301,9 +301,9 @@ export function backProp(network: Node[][], target: number,
 
     // Error derivative with respect to each weight coming into the node.
     for (let i = 0; i < currentLayer.length; i++) {
-      let node = currentLayer[i];
+      const node = currentLayer[i];
       for (let j = 0; j < node.inputLinks.length; j++) {
-        let link = node.inputLinks[j];
+        const link = node.inputLinks[j];
         if (link.isDead) {
           continue;
         }
@@ -315,13 +315,13 @@ export function backProp(network: Node[][], target: number,
     if (layerIdx === 1) {
       continue;
     }
-    let prevLayer = network[layerIdx - 1];
+    const prevLayer = network[layerIdx - 1];
     for (let i = 0; i < prevLayer.length; i++) {
-      let node = prevLayer[i];
+      const node = prevLayer[i];
       // Compute the error derivative with respect to each node's output.
       node.outputDer = 0;
       for (let j = 0; j < node.outputs.length; j++) {
-        let output = node.outputs[j];
+        const output = node.outputs[j];
         node.outputDer += output.weight * output.dest.inputDer;
       }
     }
@@ -335,9 +335,9 @@ export function backProp(network: Node[][], target: number,
 export function updateWeights(network: Node[][], learningRate: number,
     regularizationRate: number) {
   for (let layerIdx = 1; layerIdx < network.length; layerIdx++) {
-    let currentLayer = network[layerIdx];
+    const currentLayer = network[layerIdx];
     for (let i = 0; i < currentLayer.length; i++) {
-      let node = currentLayer[i];
+      const node = currentLayer[i];
       // Update the node's bias.
       if (node.numAccumulatedDers > 0) {
         node.bias -= learningRate * node.accInputDer / node.numAccumulatedDers;
@@ -346,18 +346,18 @@ export function updateWeights(network: Node[][], learningRate: number,
       }
       // Update the weights coming into this node.
       for (let j = 0; j < node.inputLinks.length; j++) {
-        let link = node.inputLinks[j];
+        const link = node.inputLinks[j];
         if (link.isDead) {
           continue;
         }
-        let regulDer = link.regularization ?
+        const regulDer = link.regularization ?
             link.regularization.der(link.weight) : 0;
         if (link.numAccumulatedDers > 0) {
           // Update the weight based on dE/dw.
           link.weight = link.weight -
               (learningRate / link.numAccumulatedDers) * link.accErrorDer;
           // Further update the weight based on regularization.
-          let newLinkWeight = link.weight -
+          const newLinkWeight = link.weight -
               (learningRate * regularizationRate) * regulDer;
           if (link.regularization === RegularizationFunction.L1 &&
               link.weight * newLinkWeight < 0) {
@@ -381,9 +381,9 @@ export function forEachNode(network: Node[][], ignoreInputs: boolean,
   for (let layerIdx = ignoreInputs ? 1 : 0;
       layerIdx < network.length;
       layerIdx++) {
-    let currentLayer = network[layerIdx];
+    const currentLayer = network[layerIdx];
     for (let i = 0; i < currentLayer.length; i++) {
-      let node = currentLayer[i];
+      const node = currentLayer[i];
       accessor(node);
     }
   }
