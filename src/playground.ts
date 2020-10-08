@@ -396,7 +396,7 @@ function makeGUI() {
 
 function updateBiasesUI(network: nn.Node[][]) {
   nn.forEachNode(network, true, node => {
-    d3.select(`rect#bias-${node.id}`).style("fill", colorScale(node.bias));
+    d3.select(`rect#bias-${node.id}`).style("fill", colorScale(node.getBias()));
   });
 }
 
@@ -411,8 +411,8 @@ function updateWeightsUI(network: nn.Node[][], container) {
         container.select(`#link${link.source.id}-${link.dest.id}`)
             .style({
               "stroke-dashoffset": -iter / 3,
-              "stroke-width": linkWidthScale(Math.abs(link.weight)),
-              "stroke": colorScale(link.weight)
+              "stroke-width": linkWidthScale(Math.abs(link.getWeight())),
+              "stroke": colorScale(link.getWeight())
             })
             .datum(link);
       }
@@ -717,9 +717,9 @@ function updateHoverCard(type: HoverType, nodeOrLink?: nn.Node | nn.Link,
     input.on("input", function() {
       if (this.value != null && this.value !== "") {
         if (type === HoverType.WEIGHT) {
-          (nodeOrLink as nn.Link).weight = +this.value;
+          (nodeOrLink as nn.Link).setWeight(+this.value);
         } else {
-          (nodeOrLink as nn.Node).bias = +this.value;
+          (nodeOrLink as nn.Node).setBias((nodeOrLink as nn.Node).getBias() + this.value);
         }
         updateUI();
       }
@@ -732,8 +732,8 @@ function updateHoverCard(type: HoverType, nodeOrLink?: nn.Node | nn.Link,
     (input.node() as HTMLInputElement).focus();
   });
   let value = (type === HoverType.WEIGHT) ?
-    (nodeOrLink as nn.Link).weight :
-    (nodeOrLink as nn.Node).bias;
+    (nodeOrLink as nn.Link).getWeight() :
+    (nodeOrLink as nn.Node).getBias();
   let name = (type === HoverType.WEIGHT) ? "Weight" : "Bias";
   hovercard.style({
     "left": `${coordinates[0] + 20}px`,
@@ -825,7 +825,7 @@ function updateDecisionBoundary(network: nn.Node[][], firstTime: boolean) {
       let input = constructInput(x, y);
       nn.forwardProp(network, input);
       nn.forEachNode(network, true, node => {
-        boundary[node.id][i][j] = node.output;
+        boundary[node.id][i][j] = node.getOutput();
       });
       if (firstTime) {
         // Go through all predefined inputs.
@@ -930,7 +930,7 @@ export function getOutputWeights(network: nn.Node[][]): number[] {
       let node = currentLayer[i];
       for (let j = 0; j < node.outputLinks.length; j++) {
         let output = node.outputLinks[j];
-        weights.push(output.weight);
+        weights.push(output.getWeight());
       }
     }
   }

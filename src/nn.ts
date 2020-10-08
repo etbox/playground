@@ -19,35 +19,33 @@ limitations under the License.
  * after every forward and back propagation run.
  */
 export class Node {
-  id: string;
+  readonly id: string;
   /** List of input links. */
-  inputLinks: Link[] = [];
-  bias = 0.1;
+  readonly inputLinks: Link[] = [];
+  private bias = 0.1;
   /** List of output links. */
-  outputLinks: Link[] = [];
-  totalInput: number;
-  output: number;
+  readonly outputLinks: Link[] = [];
+  private totalInput: number;
+  private output: number;
   /** Error derivative with respect to this node's output. */
-  outputDer = 0;
+  private outputDer = 0;
   /** Error derivative with respect to this node's total input. */
-  inputDer = 0;
+  private inputDer = 0;
   /**
    * Accumulated error derivative with respect to this node's total input since
    * the last update. This derivative equals dE/db where b is the node's
    * bias term.
    */
-  accInputDer = 0;
+  private accInputDer = 0;
   /**
    * Number of accumulated err. derivatives with respect to the total input
    * since the last update.
    */
-  numAccumulatedDers = 0;
+  private numAccDers = 0;
   /** Activation function that takes total input and returns node's output */
-  activation: ActivationFunction;
+  readonly activation: ActivationFunction;
 
-  /**
-   * Creates a new node with the provided id and activation function.
-   */
+  /** Creates a new node with the provided id and activation function. */
   constructor(id: string, activation: ActivationFunction, initZero?: boolean) {
     this.id = id;
     this.activation = activation;
@@ -57,21 +55,68 @@ export class Node {
   }
 
   /** Recomputes the node's output and returns it. */
-  updateOutput(): number {
+  updateOutput() {
     // Stores total input into the node.
     this.totalInput = this.bias;
     for (let j = 0; j < this.inputLinks.length; j++) {
       const link = this.inputLinks[j];
-      this.totalInput += link.weight * link.source.output;
+      const wj_aj = link.getWeight() * link.source.output;
+      this.setTotalInput(this.getTotalInput() + wj_aj);
     }
     this.output = this.activation.output(this.totalInput);
+  }
+
+  addInputLink(inputLink: Link) {
+    this.inputLinks.push(inputLink);
+  }
+  addOutputLink(outputLink: Link) {
+    this.outputLinks.push(outputLink);
+  }
+  initOutput(input: number) {
+    this.output = input;
+  }
+  getOutput(): number {
     return this.output;
+  }
+  setOutputDer(outputDer: number) {
+    this.outputDer = outputDer;
+  }
+  getOutputDer(): number {
+    return this.outputDer;
+  }
+  setInputDer(inputDer: number) {
+    this.inputDer = inputDer;
+  }
+  getInputDer(): number {
+    return this.inputDer;
+  }
+  setAccInputDer(accInputDer: number) {
+    this.accInputDer = accInputDer;
+  }
+  getAccInputDer() {
+    return this.accInputDer;
+  }
+  setNumAccDers(numAccDers: number) {
+    this.numAccDers = numAccDers;
+  }
+  getNumAccDers(): number {
+    return this.numAccDers
+  }
+  setTotalInput(totalInput: number) {
+    this.totalInput = totalInput;
+  }
+  getTotalInput(): number {
+    return this.totalInput
+  }
+  setBias(bias: number) {
+    this.bias = bias;
+  }
+  getBias(): number {
+    return this.bias
   }
 }
 
-/**
- * An error function and its derivative.
- */
+/** An error function and its derivative. */
 export interface ErrorFunction {
   error: (output: number, target: number) => number;
   der: (output: number, target: number) => number;
@@ -155,18 +200,18 @@ export class RegularizationFunction {
  * a run of back propagation.
  */
 export class Link {
-  id: string;
-  source: Node;
-  dest: Node;
-  weight = Math.random() - 0.5;
+  readonly id: string;
+  readonly source: Node;
+  readonly dest: Node;
+  private weight = Math.random() - 0.5;
   isDead = false;
-  /** Error derivative with respect to this weight. */
-  errorDer = 0;
+  // /** Error derivative with respect to this weight. */
+  // private errorDer = 0;
   /** Accumulated error derivative since the last update. */
-  accErrorDer = 0;
+  private accErrorDer = 0;
   /** Number of accumulated derivatives since the last update. */
-  numAccumulatedDers = 0;
-  regularization: RegularizationFunction;
+  private numAccDers = 0;
+  readonly regularization: RegularizationFunction;
 
   /**
    * Constructs a link in the neural network initialized with random weight.
@@ -185,6 +230,28 @@ export class Link {
     if (initZero) {
       this.weight = 0;
     }
+  }
+
+  // setErrorDer(errorDer: number) {
+  //   this.errorDer = errorDer;
+  // }
+  setAccErrorDer(accErrorDer: number) {
+    this.accErrorDer = accErrorDer;
+  }
+  getAccErrorDer(): number {
+    return this.accErrorDer;
+  }
+  setNumAccDers(numAccDers: number) {
+    this.numAccDers = numAccDers;
+  }
+  getNumAccDers(): number {
+    return this.numAccDers;
+  }
+  setWeight(weight: number) {
+    this.weight = weight;
+  }
+  getWeight(): number {
+    return this.weight;
   }
 }
 
@@ -231,8 +298,8 @@ export function buildNetwork(
         for (let j = 0; j < network[layerIdx - 1].length; j++) {
           const prevNode = network[layerIdx - 1][j];
           const link = new Link(prevNode, node, regularization, initZero);
-          prevNode.outputLinks.push(link);
-          node.inputLinks.push(link);
+          prevNode.addOutputLink(link);
+          node.addInputLink(link);
         }
       }
     }
@@ -259,7 +326,7 @@ export function forwardProp(network: Node[][], inputs: number[]): number {
   // Update the input layer.
   for (let i = 0; i < inputLayer.length; i++) {
     const node = inputLayer[i];
-    node.output = inputs[i];
+    node.initOutput(inputs[i])
   }
   for (let layerIdx = 1; layerIdx < network.length; layerIdx++) {
     const currentLayer = network[layerIdx];
@@ -269,7 +336,7 @@ export function forwardProp(network: Node[][], inputs: number[]): number {
       node.updateOutput();
     }
   }
-  return network[network.length - 1][0].output;
+  return network[network.length - 1][0].getOutput();
 }
 
 /**
@@ -278,13 +345,18 @@ export function forwardProp(network: Node[][], inputs: number[]): number {
  * This method modifies the internal state of the network - the error
  * derivatives with respect to each node, and each weight
  * in the network.
+ *
+ * @param network The neural network.
+ * @param target The provided target for computing error.
+ * @param errorFunc The user-defined error function for computing error.
  */
 export function backProp(network: Node[][], target: number,
     errorFunc: ErrorFunction): void {
   // The output node is a special case. We use the user-defined error
   // function for the derivative.
   const outputNode = network[network.length - 1][0];
-  outputNode.outputDer = errorFunc.der(outputNode.output, target);
+  const lastOutputDer = errorFunc.der(outputNode.getOutput(), target);
+  outputNode.setOutputDer(lastOutputDer);
 
   // Go through the layers backwards.
   for (let layerIdx = network.length - 1; layerIdx >= 1; layerIdx--) {
@@ -294,9 +366,10 @@ export function backProp(network: Node[][], target: number,
     // 2) each of its input weights.
     for (let i = 0; i < currentLayer.length; i++) {
       const node = currentLayer[i];
-      node.inputDer = node.outputDer * node.activation.der(node.totalInput);
-      node.accInputDer += node.inputDer;
-      node.numAccumulatedDers++;
+      const inputDer = node.getOutputDer() * node.activation.der(node.getTotalInput());
+      node.setInputDer(inputDer);
+      node.setAccInputDer(node.getAccInputDer() + inputDer);
+      node.setNumAccDers(node.getNumAccDers() + 1);
     }
 
     // Error derivative with respect to each weight coming into the node.
@@ -307,9 +380,10 @@ export function backProp(network: Node[][], target: number,
         if (link.isDead) {
           continue;
         }
-        link.errorDer = node.inputDer * link.source.output;
-        link.accErrorDer += link.errorDer;
-        link.numAccumulatedDers++;
+        const errorDer = node.getInputDer() * link.source.getOutput();
+        // link.setErrorDer(errorDer);
+        link.setAccErrorDer(link.getAccErrorDer() + errorDer);
+        link.setNumAccDers(link.getNumAccDers() + 1);
       }
     }
     if (layerIdx === 1) {
@@ -319,10 +393,11 @@ export function backProp(network: Node[][], target: number,
     for (let i = 0; i < prevLayer.length; i++) {
       const node = prevLayer[i];
       // Compute the error derivative with respect to each node's output.
-      node.outputDer = 0;
+      node.setOutputDer(0);
       for (let j = 0; j < node.outputLinks.length; j++) {
-        const output = node.outputLinks[j];
-        node.outputDer += output.weight * output.dest.inputDer;
+        const outputLink = node.outputLinks[j];
+        const outputDer = node.getOutputDer() + outputLink.getWeight() * outputLink.dest.getInputDer();
+        node.setOutputDer(outputDer);
       }
     }
   }
@@ -339,10 +414,12 @@ export function updateWeights(network: Node[][], learningRate: number,
     for (let i = 0; i < currentLayer.length; i++) {
       const node = currentLayer[i];
       // Update the node's bias.
-      if (node.numAccumulatedDers > 0) {
-        node.bias -= learningRate * node.accInputDer / node.numAccumulatedDers;
-        node.accInputDer = 0;
-        node.numAccumulatedDers = 0;
+      if (node.getNumAccDers() > 0) {
+        const averageAccDer = node.getAccInputDer() / node.getNumAccDers();
+        const decrement = learningRate * averageAccDer;
+        node.setBias(node.getBias() - decrement);
+        node.setAccInputDer(0);
+        node.setNumAccDers(0);
       }
       // Update the weights coming into this node.
       for (let j = 0; j < node.inputLinks.length; j++) {
@@ -351,24 +428,24 @@ export function updateWeights(network: Node[][], learningRate: number,
           continue;
         }
         const regulDer = link.regularization ?
-            link.regularization.der(link.weight) : 0;
-        if (link.numAccumulatedDers > 0) {
+            link.regularization.der(link.getWeight()) : 0;
+        if (link.getNumAccDers() > 0) {
           // Update the weight based on dE/dw.
-          link.weight = link.weight -
-              (learningRate / link.numAccumulatedDers) * link.accErrorDer;
+          const dE_dw = (learningRate / link.getNumAccDers()) * link.getAccErrorDer();
+          link.setWeight(link.getWeight() - dE_dw);
           // Further update the weight based on regularization.
-          const newLinkWeight = link.weight -
+          const newLinkWeight = link.getWeight() -
               (learningRate * regularizationRate) * regulDer;
           if (link.regularization === RegularizationFunction.L1 &&
-              link.weight * newLinkWeight < 0) {
+              link.getWeight() * newLinkWeight < 0) {
             // The weight crossed 0 due to the regularization term. Set it to 0.
-            link.weight = 0;
+            link.setWeight(0);
             link.isDead = true;
           } else {
-            link.weight = newLinkWeight;
+            link.setWeight(newLinkWeight);
           }
-          link.accErrorDer = 0;
-          link.numAccumulatedDers = 0;
+          link.setAccErrorDer(0);
+          link.setNumAccDers(0);
         }
       }
     }
