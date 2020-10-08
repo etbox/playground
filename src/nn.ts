@@ -24,7 +24,7 @@ export class Node {
   inputLinks: Link[] = [];
   bias = 0.1;
   /** List of output links. */
-  outputs: Link[] = [];
+  outputLinks: Link[] = [];
   totalInput: number;
   output: number;
   /** Error derivative with respect to this node's output. */
@@ -231,7 +231,7 @@ export function buildNetwork(
         for (let j = 0; j < network[layerIdx - 1].length; j++) {
           const prevNode = network[layerIdx - 1][j];
           const link = new Link(prevNode, node, regularization, initZero);
-          prevNode.outputs.push(link);
+          prevNode.outputLinks.push(link);
           node.inputLinks.push(link);
         }
       }
@@ -320,8 +320,8 @@ export function backProp(network: Node[][], target: number,
       const node = prevLayer[i];
       // Compute the error derivative with respect to each node's output.
       node.outputDer = 0;
-      for (let j = 0; j < node.outputs.length; j++) {
-        const output = node.outputs[j];
+      for (let j = 0; j < node.outputLinks.length; j++) {
+        const output = node.outputLinks[j];
         node.outputDer += output.weight * output.dest.inputDer;
       }
     }

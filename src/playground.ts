@@ -928,8 +928,8 @@ export function getOutputWeights(network: nn.Node[][]): number[] {
     let currentLayer = network[layerIdx];
     for (let i = 0; i < currentLayer.length; i++) {
       let node = currentLayer[i];
-      for (let j = 0; j < node.outputs.length; j++) {
-        let output = node.outputs[j];
+      for (let j = 0; j < node.outputLinks.length; j++) {
+        let output = node.outputLinks[j];
         weights.push(output.weight);
       }
     }
